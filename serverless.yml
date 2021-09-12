@@ -1,0 +1,73 @@
+org: kierenfunk
+app: utils
+service: s3-uploader
+
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: python3.8
+  lambdaHashingVersion: '20201221'
+  iam:
+    role:
+      statements:
+        - Effect: 'Allow'
+          Action:
+            - 's3:PutObject'
+            - 's3:GetObject'
+          Resource: 'arn:aws:s3:::utils-s3-uploader/*'
+
+functions:
+  initiator:
+    handler: handler.initiator
+    environment:
+      BUCKET_NAME: utils-s3-uploader
+    events:
+      - http:
+          path: /
+          method: post
+          cors: true
+
+resources:
+  Resources:
+    GatewayResponse:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+        ResponseType: DEFAULT_4XX
+        RestApiId: 
+          Ref: 'ApiGatewayRestApi'
+    myBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: utils-s3-uploader
+        LifecycleConfiguration:
+          Rules:
+            -
+              ExpirationInDays: 1
+              Prefix: '/'
+              Status: Enabled 
+        VersioningConfiguration:
+          Status: Suspended
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - HEAD
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 4000
+    host: 0.0.0.0
